@@ -1,12 +1,15 @@
 import streamlit as st
 import json
-import os
 
 EXAM_FILE = "exam.json"
 STUDENT_FILE = "students.json"
 RESULT_FILE = "results.json"
 
-# Create Exam
+# ---------------- SESSION STATE ----------------
+if "answers" not in st.session_state:
+    st.session_state.answers = []
+
+# ---------------- FUNCTIONS ----------------
 def create_exam():
     exam = {
         "questions": [
@@ -17,7 +20,6 @@ def create_exam():
     with open(EXAM_FILE, "w") as f:
         json.dump(exam, f)
 
-# Register Student
 def register_student(name):
     try:
         with open(STUDENT_FILE, "r") as f:
@@ -33,7 +35,6 @@ def register_student(name):
 
     return seat
 
-# Evaluate
 def evaluate(name, answers):
     with open(EXAM_FILE, "r") as f:
         exam = json.load(f)
@@ -56,38 +57,50 @@ def evaluate(name, answers):
 
     return score
 
-
 # ---------------- UI ----------------
 
 st.title("📘 Smart Examination System")
 
+# Create Exam
 if st.button("Create Exam"):
     create_exam()
     st.success("Exam Created!")
 
+# Student Name
 name = st.text_input("Enter Student Name")
 
+# Register
 if st.button("Register Student"):
     seat = register_student(name)
     st.success(f"{name} got seat {seat}")
 
-if st.button("Take Exam"):
+# Take Exam
+if st.button("Start Exam"):
     with open(EXAM_FILE, "r") as f:
         exam = json.load(f)
 
-    answers = []
-    for q in exam["questions"]:
-        ans = st.selectbox(q["q"], q["options"])
-        answers.append(ans)
+    st.session_state.answers = []
 
-    if st.button("Submit Exam"):
-        score = evaluate(name, answers)
+    for i, q in enumerate(exam["questions"]):
+        ans = st.selectbox(q["q"], q["options"], key=i)
+        st.session_state.answers.append(ans)
+
+# Submit
+if st.button("Submit Exam"):
+    if name and st.session_state.answers:
+        score = evaluate(name, st.session_state.answers)
         st.success(f"Score: {score}")
+    else:
+        st.warning("Please enter name and complete exam")
 
+# Show Results
 if st.button("Show Results"):
     try:
         with open(RESULT_FILE, "r") as f:
             results = json.load(f)
-        st.write(results)
+
+        st.write("📊 Results:")
+        for r in results:
+            st.write(f"{r['name']} → {r['score']}")
     except:
         st.warning("No results yet")
